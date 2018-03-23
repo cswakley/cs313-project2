@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>List</title>
+</head>
+<body>
+	<h1>List of Videos</h1>
+	
+	<ul>
+    <% table.forEach(function(r) { %>
+        <li><a href="/watch?id=<%= r.videocode %>"><%= r.videocode %></a> - <%= r.username %></li>
+    <% }); %>
+	</ul>
+</body>
+</html>

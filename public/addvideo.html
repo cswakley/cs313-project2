@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Add a Video</title>
+</head>
+<body>
+	<h1>Add your favorite YouTube video!</h1>
+	<p>In the wrong place? <a href="/home">Go Back</a>.</p>
+	<p>Use the form below to add your favorite Youtube videos to this site for others to see! Under the 
+	input bar labeled "Video ID", get the video ID from the YouTube video URL (The part of the URL that 
+	looks like a jumbled mess), As shown below: <br><br>
+	https://www.youtube.com/watch?v=#THIS PART IS THE VIDEO ID#</p><br><br>
+
+	<form method="get" action="/addnewvideo">
+		<input type="text" name="videoid" placeholder="YouTube Video ID">
+		<input type="submit" name="submit" value="submit">
+	</form>
+</body>
+</html>

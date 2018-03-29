@@ -1,6 +1,5 @@
 /*
 * TODO: Add comments.
-* TODO: Change some GET requests to POST
 */
 const express = require('express');
 const path = require('path');
@@ -8,6 +7,8 @@ const PORT = process.env.PORT || 5000;
 const { Pool, Client } = require('pg');
 const url = require('url');
 const app = express();
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 const connectionString = "postgres://zdhslclmzvbikp:6dc993f483fb00f2106f9ee5ceacbdafdf33cd9ea5903fdd566d0bcee98981cc@ec2-54-221-212-15.compute-1.amazonaws.com:5432/ddq4drb00dvcn3";
 
@@ -21,13 +22,18 @@ const client = new Client({
 	ssl: true,
 });
 
-var userLoggedIn;
+var userLoggedIn = null;
 
 var videoId;
 
+/*********************************************************** 
+* 
+***********************************************************/
 app.use(express.static(path.join(__dirname, 'public')))
   .set('views', path.join(__dirname, 'views'))
   .set('view engine', 'ejs')
+  .use(express.json())
+  .use(express.urlencoded())
   .get('/', (req, res) => res.render('pages/index'))
   .get('/main', (req, res) => {
   	if(userLoggedIn == null){
@@ -39,36 +45,39 @@ app.use(express.static(path.join(__dirname, 'public')))
   		app.handle(req, res);
   	}
   })
-  .get('/verify', (req, res) => {
-  	var q = url.parse(req.url, true);
-  	var qdata = q.query;
-  	var usrname = qdata.username;
-  	var pass  = qdata.password;
+  .post('/verify', (req, res, next) => {
+  	var usrname = req.body.username;
+  	var pass = req.body.password;
 
   	verifyUser(usrname, pass, function(err, result){
 	  	if (result != null){
+	  		console.log("Back from the Verify User.")
 	  		userLoggedIn = result;
+	  		console.log(userLoggedIn);
 	  		/* redirect to /home */
-	  		req.url = '/home';
-	  		app.handle(req, res);
+	  		res.redirect('/home');
 	  	}
 	  	else {
-	  		/* redirect to login */
-	  		req.url = '/main';
-	  		app.handle(req, res);
+	  		console.log("Back from the Verify User, but in the Else statement.")
+	  		// app.handle(req, res);
+	  		res.redirect('/main');
 	  	}
   	});
   })
-  .get('/create_account', (req, res) => {
-  	var w = url.parse(req.url, true);
-  	var wdata = w.query;
-  	var newuser = wdata.newuser;
-  	var newpass = wdata.newpass;
+  .post('/create_account', (req, res) => {
+  	var newuser = req.body.newuser;
+  	var newpass = req.body.newpass;
+  	var passconf = req.body.newpassconf;
 
-  	addUser(newuser, newpass);
-  	/* redirect to login */
-  	req.url = '/main';
-  	app.handle(req, res);
+  	addUser(newuser, newpass, passconf, function(err, result){
+  		if (result == false){
+  			/* Handle failure to create account */
+  			console.log(err);
+  		}
+  		else {
+  			res.redirect('/main');
+  		}
+  	});
   })
   .get('/home', (req, res) => {
   	if(userLoggedIn != null){
@@ -77,14 +86,11 @@ app.use(express.static(path.join(__dirname, 'public')))
   	   	to assign the videoID var, then send to /watch */
 
   		getTable(req, res, function(err, result){
-  			//console.log(result);
   			res.render('pages/homepage', {table : result});
   		});
   	}
   	else {
-  		/* redirect to /login */
-  		req.url = '/main';
-  		app.handle(req, res);
+  		res.redirect('/main');
   	}
   })
   .get('/watch', (req, res) => {
@@ -101,22 +107,10 @@ app.use(express.static(path.join(__dirname, 'public')))
 
   	console.log(vid);
 
-  	var test = [{
-  		username:'test',
-  		message:'gosh I hope this works',
-  	}, {
-  		username:'Woot',
-  		message:'pls wrk',
-  	}, {
-  		username:'doubter091',
-  		message:'it works dingus',
-  	}];
-
   	getComment(vid, function(err, result){
   		res.send(result);
   	});
 
-  	//res.send(test);
   })
   .get('/addcomment', (req, res) => {
   	var a = url.parse(req.url, true);
@@ -125,10 +119,23 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var message = adata.message;
 
   	addComment(vidId, message, userLoggedIn);
+
+  	res.redirect(req.get('referer'));
+  })
+  .get('/addnewvideo', (req, res) => {
+  	var n = url.parse(req.url, true);
+  	var ndata = n.query;
+  	var newvid = ndata.videoid;
+
+  	addVideo(newvid, function(err){
+  		res.redirect('/home');
+  	});
   })
   .listen(PORT, () => console.log(`Listening on ${ PORT }`))
 
-/* Querys the Database to get the table of Youtube video IDs */
+/*********************************************************** 
+* Querys the Database to get the table of Youtube video IDs 
+***********************************************************/
 function getTable(req, res, callback){
 	console.log('Displaying table...');
 
@@ -151,12 +158,14 @@ function getTable(req, res, callback){
 	});
 }
 
-/* Verifies the User Exists */
+/*********************************************************** 
+* Verifies the User Exists 
+***********************************************************/
 function verifyUser (usrname, pass, callback){
 	client.connect();
 
 	var check;
-	var sql = "SELECT * FROM users";
+	var sql = "SELECT * FROM users WHERE username = '" + usrname + "'";
 	var query = client.query(sql, function(err, res) {
 		client.end(function(err) {
 			if (err) throw err;
@@ -167,38 +176,57 @@ function verifyUser (usrname, pass, callback){
 			console.log(err);
 		}
 
-		check = res.rows;
+		check = res.rows[0];
 
-		check.forEach( function(r){
-			console.log(r.username);
-			console.log(usrname);
-			if (usrname == r.username && pass == r.password){
+		console.log(check.username);
+
+		bcrypt.compare(pass, check.password, function(err, res) {
+			console.log(res);
+			if (usrname == check.username && res) {
+				console.log("Inside the if found");
 				callback(null, usrname);
 			}
 			else {
+				console.log("Inside the NOT found");
 				callback(null, null);
 			}
 		});
 	});
 }
 
-function newUser(newuser, newpass){
-	var query = {
-		text: 'INSERT INTO users(username, password) VALUES ($1, $2)',
-		values: [newuser, newpass],
-	}
+/*********************************************************** 
+* 
+***********************************************************/
+function addUser(newuser, newpass, passconf, callback){
+	if(newpass == passconf){
+		bcrypt.hash(newpass, saltRounds, function(err, hash){
+			console.log(hash);
+			
+			client.connect();
 
-	client.query(query, (err, res) => {
-		if (err){
-			console.log(err.stack);
-		}
-		else{
-			console.log('Adding new user: ')
-			console.log(res.rows[0]);
-		}
-	});
+			var	text = 'INSERT INTO users(username, password) VALUES ($1, $2)';
+			var	values = [newuser, hash];
+
+			client.query(text, values, (err, res) => {
+				if (err) {
+					console.log(err.stack);
+				}
+				else {
+					console.log('Adding new user...');
+					callback(null, true);
+				}
+				//client.end();
+			});
+		});
+	}
+	else {
+		callback('Passwords do not match!', false);
+	}
 }
 
+/*********************************************************** 
+* 
+***********************************************************/
 function getComment(vid, callback){
 	var result;
 
@@ -219,6 +247,9 @@ function getComment(vid, callback){
 	});
 }
 
+/*********************************************************** 
+* 
+***********************************************************/
 function addComment(vidId, message, userLoggedIn){
 	client.connect();
 	var video;
@@ -226,37 +257,45 @@ function addComment(vidId, message, userLoggedIn){
 	
 	pool.connect((err, client, done) => {
 		if (err) throw err;
-		client.query('SELECT id FROM users WHERE username = $1', [userLoggedIn], (err, res) => {
-			done();
 
+		let query = 'INSERT INTO comments(message, userid, videoid)\
+		VALUES ($1,\
+		(SELECT id FROM users WHERE username = $2),\
+		(SELECT id FROM videos WHERE videocode = $3))';
+
+		let params = [ message, userLoggedIn, vidId ];
+
+		client.query(query, params, (err, res) => {
 			if (err) {
 				console.log(err.stack);
 			}
 			else {
-				user = res.rows;
+				console.log('Adding new comment...')
 			}
 		});
+	});
+}
 
-		client.query('SELECT id FROM videos WHERE videocode = $1', [vidId], (err, res) => {
-			done();
+/***********************************************************
+* 
+***********************************************************/
+function addVideo(vidId, callback){
+	pool.connect((err, client, done) => {
+		if (err) throw err;
 
+		let query = 'INSERT INTO videos(videocode, userid)\
+		VALUES ($1,\
+		(SELECT id FROM users WHERE username = $2))';
+
+		let params = [ vidId, userLoggedIn ];
+
+		client.query(query, params, (err, res) => {
 			if (err) {
 				console.log(err.stack);
 			}
 			else {
-				video = res.rows;
-			}
-		});
-
-		client.query('INSERT INTO comments(message, userid, videoid) VALUES ($1, $2, $3)', [message, user, video], (err, res) => {
-			done();
-
-			if (err) {
-				console.log(err.stack);
-			}
-			else {
-				console.log('Adding new comment: ')
-				console.log(res.rows);
+				console.log('Adding new video...')
+				callback(null);
 			}
 		});
 	});

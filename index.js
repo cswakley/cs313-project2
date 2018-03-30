@@ -22,7 +22,9 @@ const client = new Client({
 	ssl: true,
 });
 
-var userLoggedIn = null;
+var session = require('express-session');
+
+//var userLoggedIn = null;
 
 var videoId;
 
@@ -34,15 +36,16 @@ app.use(express.static(path.join(__dirname, 'public')))
   .set('view engine', 'ejs')
   .use(express.json())
   .use(express.urlencoded())
+  .use(session({secret:"super secret"}))
   .get('/', (req, res) => res.render('pages/index'))
   .get('/main', (req, res) => {
-  	if(userLoggedIn == null){
+  	//if(userLoggedIn == null){
+  	if(req.session.username == null){
   		res.render('pages/loginpage');
   	}
   	else {
   		/* redirect to /home */
-  		req.url = '/home';
-  		app.handle(req, res);
+  		res.redirect('/home');
   	}
   })
   .post('/verify', (req, res, next) => {
@@ -52,8 +55,11 @@ app.use(express.static(path.join(__dirname, 'public')))
   	verifyUser(usrname, pass, function(err, result){
 	  	if (result != null){
 	  		console.log("Back from the Verify User.")
-	  		userLoggedIn = result;
-	  		console.log(userLoggedIn);
+	  		console.log(req.session.username);
+	  		// userLoggedIn = result;
+	  		// console.log(userLoggedIn);
+	  		req.session.username = result;
+	  		console.log(req.session.username);
 	  		/* redirect to /home */
 	  		res.redirect('/home');
 	  	}
@@ -80,7 +86,8 @@ app.use(express.static(path.join(__dirname, 'public')))
   	});
   })
   .get('/home', (req, res) => {
-  	if(userLoggedIn != null){
+  	//if(userLoggedIn != null){
+  	if(req.session.username != null){
   		/* Loop through the database and output the list of videos,
   	   	somehow storing their IDs. Once one is clicked, use the ID
   	   	to assign the videoID var, then send to /watch */
@@ -118,7 +125,8 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var vidId = adata.videoId;
   	var message = adata.message;
 
-  	addComment(vidId, message, userLoggedIn);
+  	// addComment(vidId, message, userLoggedIn);
+  	addComment(vidId, message, req.session.username);
 
   	res.redirect(req.get('referer'));
   })
@@ -127,7 +135,7 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var ndata = n.query;
   	var newvid = ndata.videoid;
 
-  	addVideo(newvid, function(err){
+  	addVideo(newvid, req.session.username, function(err){
   		res.redirect('/home');
   	});
   })
@@ -279,7 +287,7 @@ function addComment(vidId, message, userLoggedIn){
 /***********************************************************
 * 
 ***********************************************************/
-function addVideo(vidId, callback){
+function addVideo(vidId, userLoggedIn, callback){
 	pool.connect((err, client, done) => {
 		if (err) throw err;
 

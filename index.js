@@ -40,13 +40,14 @@ app.use(express.static(path.join(__dirname, 'public')))
   .get('/', (req, res) => res.render('pages/index'))
   .get('/main', (req, res) => {
   	//if(userLoggedIn == null){
-  	if(req.session.username == null){
-  		res.render('pages/loginpage');
-  	}
-  	else {
-  		/* redirect to /home */
-  		res.redirect('/home');
-  	}
+  	// if(req.session.username == null){
+  	// 	res.render('pages/loginpage');
+  	// }
+  	// else {
+  	// 	/* redirect to /home */
+  	// 	res.redirect('/home');
+  	// }
+  	res.render('pages/loginpage');
   })
   .post('/verify', (req, res, next) => {
   	var usrname = req.body.username;

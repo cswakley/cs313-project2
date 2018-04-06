@@ -2,16 +2,31 @@
 <html>
 <head>
 	<title>List</title>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/style.css" />
 </head>
 <body>
-	<h1>List of Videos</h1>
-	
-	<ul>
-    <% table.forEach(function(r) { %>
-        <li><a href="/watch?id=<%= r.videocode %>"><%= r.videocode %></a> - <%= r.username %></li>
-    <% }); %>
-	</ul>
+	<div class="container">
+		<h1>List of Videos</h1>
 
-	<p><a href="addvideo.html">Add a Video!</a></p>
+		<center>
+			<% if(error){ %>
+				<p style="color:red;"><%= error %></p>
+			<% } %>
+			<table border="1" width="65%">
+				<tr>
+					<th>Video Code</th>
+					<th>Submitted By</th>
+				</tr>
+				<% table.forEach(function(r) { %>
+					<tr>
+						<td><a href="/watch?id=<%= r.videocode %>"><%= r.videocode %></a></td>
+						<td><%= r.username %></td>
+					</tr>
+				<% }); %>
+			</table>
+		</center>
+
+		<p><a href="addvideo.html">Add a Video!</a></p>
+	</div>
 </body>
 </html>

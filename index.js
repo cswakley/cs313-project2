@@ -24,12 +24,12 @@ const client = new Client({
 
 var session = require('express-session');
 
-//var userLoggedIn = null;
-
 var videoId;
 
 /*********************************************************** 
-* 
+* The stuff where the magic happens.
+* There are 8 major endpoints. /main, /home, and /watch call
+* on an .ejs page, and the rest handle logic behind stuff.
 ***********************************************************/
 app.use(express.static(path.join(__dirname, 'public')))
   .set('views', path.join(__dirname, 'views'))
@@ -39,15 +39,16 @@ app.use(express.static(path.join(__dirname, 'public')))
   .use(session({secret:"super secret"}))
   .get('/', (req, res) => res.render('pages/index'))
   .get('/main', (req, res) => {
-  	//if(userLoggedIn == null){
-  	// if(req.session.username == null){
-  	// 	res.render('pages/loginpage');
-  	// }
-  	// else {
-  	// 	/* redirect to /home */
-  	// 	res.redirect('/home');
-  	// }
-  	res.render('pages/loginpage');
+  	
+  	var error = null;
+  	if (req.session.errorcode == 1){
+  		error = "Could not verify username or password.";
+  	}
+  	else if (req.session.errorcode == 2){
+  		error = "Error creating a new account."
+  	}
+
+  	res.render('pages/loginpage', {error : error});
   })
   .post('/verify', (req, res, next) => {
   	var usrname = req.body.username;
@@ -57,16 +58,17 @@ app.use(express.static(path.join(__dirname, 'public')))
 	  	if (result != null){
 	  		console.log("Back from the Verify User.")
 	  		console.log(req.session.username);
-	  		// userLoggedIn = result;
-	  		// console.log(userLoggedIn);
+	  		
 	  		req.session.username = result;
+	  		req.session.errorcode = 0;
 	  		console.log(req.session.username);
 	  		/* redirect to /home */
 	  		res.redirect('/home');
 	  	}
 	  	else {
 	  		console.log("Back from the Verify User, but in the Else statement.")
-	  		// app.handle(req, res);
+
+	  		req.session.errorcode = 1;
 	  		res.redirect('/main');
 	  	}
   	});
@@ -76,25 +78,31 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var newpass = req.body.newpass;
   	var passconf = req.body.newpassconf;
 
-  	addUser(newuser, newpass, passconf, function(err, result){
+  	addUser(newuser, newpass, passconf, function(err, result, code){
   		if (result == false){
   			/* Handle failure to create account */
   			console.log(err);
+  			req.session.errorcode = code;
+  			res.redirect('/main');
   		}
   		else {
+  			req.session.errorcode = code;
   			res.redirect('/main');
   		}
   	});
   })
   .get('/home', (req, res) => {
-  	//if(userLoggedIn != null){
   	if(req.session.username != null){
   		/* Loop through the database and output the list of videos,
   	   	somehow storing their IDs. Once one is clicked, use the ID
   	   	to assign the videoID var, then send to /watch */
 
   		getTable(req, res, function(err, result){
-  			res.render('pages/homepage', {table : result});
+  			var error = null;
+  			if (req.session.errorcode == 3){
+  				error = "Error adding video.";
+  			}
+  			res.render('pages/homepage', {table : result, error: error});
   		});
   	}
   	else {
@@ -126,7 +134,6 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var vidId = adata.videoId;
   	var message = adata.message;
 
-  	// addComment(vidId, message, userLoggedIn);
   	addComment(vidId, message, req.session.username);
 
   	res.redirect(req.get('referer'));
@@ -136,9 +143,21 @@ app.use(express.static(path.join(__dirname, 'public')))
   	var ndata = n.query;
   	var newvid = ndata.videoid;
 
-  	addVideo(newvid, req.session.username, function(err){
+  	if (newvid.length != 11){
+  		req.session.errorcode = 3;
   		res.redirect('/home');
-  	});
+  	}
+  	else {
+	  	addVideo(newvid, req.session.username, function(err){
+	  		if (err){
+	  			req.session.errorcode = err;
+	  		}
+	  		else {
+	  			req.session.errorcode = 0;
+	  		}
+	  		res.redirect('/home');
+	  	});
+	  }
   })
   .listen(PORT, () => console.log(`Listening on ${ PORT }`))
 
@@ -171,40 +190,39 @@ function getTable(req, res, callback){
 * Verifies the User Exists 
 ***********************************************************/
 function verifyUser (usrname, pass, callback){
-	client.connect();
-
 	var check;
-	var sql = "SELECT * FROM users WHERE username = '" + usrname + "'";
-	var query = client.query(sql, function(err, res) {
-		client.end(function(err) {
-			if (err) throw err;
-		});
+	pool.connect((err, client, done) => {
+		if (err) throw err;
 
-		if (err) {
-			console.log("Error in query: ")
-			console.log(err);
-		}
+		client.query("SELECT * FROM users WHERE username = '" + usrname + "'", (err, res) => {
+			done();
 
-		check = res.rows[0];
-
-		console.log(check.username);
-
-		bcrypt.compare(pass, check.password, function(err, res) {
-			console.log(res);
-			if (usrname == check.username && res) {
-				console.log("Inside the if found");
-				callback(null, usrname);
+			if (err) {
+				console.log(err.stack);
 			}
 			else {
-				console.log("Inside the NOT found");
-				callback(null, null);
+				check = res.rows[0];
+
+				console.log(check.username);
+
+				bcrypt.compare(pass, check.password, function(err, res) {
+					console.log(res);
+					if (usrname == check.username && res) {
+						console.log("Inside the if found");
+						callback(null, usrname);
+					}
+					else {
+						console.log("Inside the NOT found");
+						callback(null, null);
+					}
+				});
 			}
 		});
 	});
 }
 
 /*********************************************************** 
-* 
+* Adds a new user to the database
 ***********************************************************/
 function addUser(newuser, newpass, passconf, callback){
 	if(newpass == passconf){
@@ -222,19 +240,19 @@ function addUser(newuser, newpass, passconf, callback){
 				}
 				else {
 					console.log('Adding new user...');
-					callback(null, true);
+					callback(null, true, 0);
 				}
 				//client.end();
 			});
 		});
 	}
 	else {
-		callback('Passwords do not match!', false);
+		callback('Passwords do not match!', false, 2);
 	}
 }
 
 /*********************************************************** 
-* 
+* Retrieves all the comments from the selected video.
 ***********************************************************/
 function getComment(vid, callback){
 	var result;
@@ -257,7 +275,7 @@ function getComment(vid, callback){
 }
 
 /*********************************************************** 
-* 
+* Adds a comment to the selected video.
 ***********************************************************/
 function addComment(vidId, message, userLoggedIn){
 	client.connect();
@@ -286,7 +304,7 @@ function addComment(vidId, message, userLoggedIn){
 }
 
 /***********************************************************
-* 
+* Adds a new video to the database.
 ***********************************************************/
 function addVideo(vidId, userLoggedIn, callback){
 	pool.connect((err, client, done) => {
@@ -301,6 +319,7 @@ function addVideo(vidId, userLoggedIn, callback){
 		client.query(query, params, (err, res) => {
 			if (err) {
 				console.log(err.stack);
+				callback(3);
 			}
 			else {
 				console.log('Adding new video...')

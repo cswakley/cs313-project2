@@ -1,53 +1,57 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<title>Test</title>
+	<title>Your Selected Video</title>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/style.css" />
 </head>
 <body onload="getComments();">
-	<p><a href="/home">Go Back to the List</a></p>
-	<iframe width="560" height="315" src="https://www.youtube.com/embed/<%= videoId %>" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+	<div class="container">
+		<p><a href="/home">Go Back to the List</a></p>
+		<iframe width="560" height="315" src="https://www.youtube.com/embed/<%= videoId %>" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 
-	<br>
-	<div id="comments">
+		<br>
+		<div id="comments">
 
+		</div>
+
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script type="text/javascript">
+			console.log("Testing output: <%= videoId %>");
+			function getComments(){
+				var videoId = "<%= videoId %>";
+				console.log(videoId);
+				//var url = 'http://localhost:5000/comments?vid=' + videoId;
+				var url = '/comments?vid=' + videoId;
+				console.log(url);
+				$.ajax(
+				{
+					type: 'GET',
+					url: url,
+					success: function(response) {
+						console.log(JSON.stringify(response));
+						var res = JSON.parse(JSON.stringify(response));
+						
+						response.forEach(function(r){
+							if (r.videocode == videoId){
+								$("#comments").append("<div class=\"comment\">" + r.username + ": " + r.message + 
+									"</div><br class=\"small\">");
+							}
+						})
+					},
+					error: function(XMLHttpRequest, textStatus, errorThrown){
+						$("#comments").append("There was an error retreiving the comments");
+					}
+				});
+			}
+		</script>
+
+		<br>
+		<br>
+		<form method="get" action="/addcomment">
+			<input type="hidden" name="videoId" value="<%= videoId %>">
+			<textarea rows="4" cols="50" name="message"></textarea><br>
+			<input type="submit" name="submit" value="Submit">
+		</form>
 	</div>
-
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<script type="text/javascript">
-		console.log("Testing output: <%= videoId %>");
-		function getComments(){
-			var videoId = "<%= videoId %>";
-			console.log(videoId);
-			//var url = 'http://localhost:5000/comments?vid=' + videoId;
-			var url = '/comments?vid=' + videoId;
-			console.log(url);
-			$.ajax(
-			{
-				type: 'GET',
-				url: url,
-				success: function(response) {
-					console.log(JSON.stringify(response));
-					var res = JSON.parse(JSON.stringify(response));
-					
-					response.forEach(function(r){
-						if (r.videocode == videoId){
-							$("#comments").append(r.username + ": " + r.message + "<br>");
-						}
-					})
-				},
-				error: function(XMLHttpRequest, textStatus, errorThrown){
-					$("#comments").append("There was an error retreiving the comments");
-				}
-			});
-		}
-	</script>
-
-	<br>
-	<br>
-	<form method="get" action="/addcomment">
-		<input type="hidden" name="videoId" value="<%= videoId %>">
-		<textarea rows="4" cols="50" name="message"></textarea><br>
-		<input type="submit" name="submit" value="Submit">
-	</form>
 </body>
 </html>

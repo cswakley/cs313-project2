@@ -1,0 +1,43 @@
+body {
+    background: #ff3b3b;
+    background: -webkit-linear-gradient(#ff3b3b, #ffecec);
+    background: -o-linear-gradient(#ff3b3b, #ffecec);
+    background: -moz-linear-gradient(#ff3b3b, #ffecec);
+    background: linear-gradient(#ff3b3b, #ffecec);
+    background-attachment: fixed;
+    font-family: Verdana, Arial, Helvetica, sans-serif;
+    /*color: #cfdef9;*/
+    text-align: center;
+}
+
+div.container {
+    margin: auto;
+    border-radius: 50px;
+    padding: 20px;
+    background-color: #ededed;
+    width: 80%;
+    height: 100%;
+    overflow: auto;
+    border: 1px solid #ff3b3b;
+}
+
+h1 {
+    font-size: 40px;
+}
+
+table {
+	table-layout: fixed;
+}
+
+.comment {
+	display: inline-block;
+	text-align: left;
+	text-indent: 30px;
+	width: 70%;
+	padding: 7px;
+	background: #ffc4c4;
+}
+
+.small {
+	line-height: 27px;
+}

@@ -2,13 +2,19 @@
 <html>
 <head>
 	<title>Sign Up</title>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/style.css" />
 </head>
 <body>
-	<form method="post" action="/create_account">
-		<input type="text" name="newuser" placeholder="Username"><br>
-		<input type="password" name="newpass" placeholder="Password"><br>
-		<input type="password" name="newpassconf" placeholder="Confirm Password"><br>
-		<input type="submit" name="submit" value="Submit">
-	</form>
+	<div class="container">
+		<h1>Create an account</h1>
+		<p>In the wrong place? <a href="/main">Go Back</a>.</p>
+
+		<form method="post" action="/create_account">
+			<input type="text" name="newuser" placeholder="Username"><br>
+			<input type="password" name="newpass" placeholder="Password"><br>
+			<input type="password" name="newpassconf" placeholder="Confirm Password"><br>
+			<input type="submit" name="submit" value="Submit">
+		</form>
+	</div>
 </body>
 </html>

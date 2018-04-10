@@ -203,7 +203,7 @@ function verifyUser (usrname, pass, callback){
 			else {
 				check = res.rows[0];
 
-				console.log(check.username);
+				//console.log(check.username);
 
 				bcrypt.compare(pass, check.password, function(err, res) {
 					console.log(res);

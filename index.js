@@ -10,7 +10,7 @@ const app = express();
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
-const connectionString = "postgres://zdhslclmzvbikp:6dc993f483fb00f2106f9ee5ceacbdafdf33cd9ea5903fdd566d0bcee98981cc@ec2-54-221-212-15.compute-1.amazonaws.com:5432/ddq4drb00dvcn3";
+const connectionString = "";
 
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL || connectionString,
